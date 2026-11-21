@@ -1,0 +1,45 @@
+
+name: Build ClockStudio
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-26
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build
+        run: swift build -c release --triple arm64-apple-macosx13.0
+
+      - name: Package
+        run: |
+          mkdir -p dist/ClockStudio.app/Contents/MacOS
+          cp .build/arm64-apple-macosx/release/ClockStudio \
+            dist/ClockStudio.app/Contents/MacOS/ClockStudio
+
+          cat > dist/ClockStudio.app/Contents/Info.plist <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <plist version="1.0">
+          <dict>
+          <key>CFBundleName</key><string>ClockStudio</string>
+          <key>CFBundleIdentifier</key><string>app.clockstudio.mac</string>
+          <key>CFBundleExecutable</key><string>ClockStudio</string>
+          <key>CFBundlePackageType</key><string>APPL</string>
+          </dict>
+          </plist>
+          PLIST
+
+          codesign --force --deep --sign - dist/ClockStudio.app
+          ditto -c -k --keepParent \
+            dist/ClockStudio.app dist/ClockStudio.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ClockStudio-Mac
+          path: dist/ClockStudio.zip
